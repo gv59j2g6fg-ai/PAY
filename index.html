@@ -1,0 +1,620 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PayCal</title>
+<style>
+:root{
+  --bg:#050812; --panel:#090d18; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --text:#f4f6fb; --muted:#98a0b5; --day:#e3c85a; --night:#607dff; --pay:#2fd27f; --ph:#39e34b;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(53,85,150,.16), transparent 60%),
+    radial-gradient(900px 700px at 100% 0%, rgba(19,35,80,.20), transparent 55%),
+    linear-gradient(180deg,#03050b,#050812 50%,#04070f);}
+.app{max-width:1660px;margin:0 auto;padding:18px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.title{font-size:clamp(26px,3vw,40px);font-weight:900;letter-spacing:-.03em}
+.sub{font-size:13px;color:var(--muted);margin-top:4px}
+.summary{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;background:rgba(8,11,21,.78);border:1px solid var(--line);border-radius:28px;padding:14px;margin-bottom:16px}
+.card{background:#070b15;border:1px solid var(--line);border-radius:22px;padding:18px}
+.card .k{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.card .v{font-size:clamp(20px,2.3vw,44px);font-weight:900;letter-spacing:-.03em}
+.card .s{font-size:13px;color:#cfd4e3;margin-top:2px}
+.btn{border:1px solid var(--line);background:#0a1020;color:var(--text);cursor:pointer;padding:12px 16px;border-radius:16px;font-weight:800}
+.rightBtns{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.wrap,.panel{background:rgba(8,11,21,.78);border:1px solid var(--line);border-radius:28px;padding:16px}
+.monthBar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 2px 16px}
+.monthLeft,.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.monthTitle{font-size:clamp(26px,2.4vw,38px);font-weight:900;letter-spacing:-.03em}
+.legend .item{font-size:12px;color:var(--muted);padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#070b15;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:8px}
+.weekdays div{text-align:center;color:#c7c9d2;font-weight:800;font-size:clamp(18px,1.6vw,24px)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+.cell{position:relative;min-height:180px;border-radius:24px;border:1px solid rgba(255,255,255,.09);background:linear-gradient(180deg,rgba(4,7,14,.95),rgba(2,5,12,.98));padding:14px;cursor:pointer;text-align:left;color:var(--text)}
+.cell.other{opacity:.38}.cell.selected{border:3px solid rgba(255,255,255,.92)}
+.dateNum{font-size:clamp(20px,2vw,28px);font-weight:900;line-height:1;display:block}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tag{border-radius:999px;padding:9px 14px;font-weight:900;line-height:1;font-size:clamp(14px,1.3vw,20px)}
+.day{background:var(--day);color:#161616}.night{background:var(--night);color:#fff}.pay{background:var(--pay);color:#07160f}.ph{background:var(--ph);color:#07210a}
+.ot-deoh{background:#7c3aed;color:#fff}.ot-dayot{background:#0f766e;color:#fff}.ot-nightot{background:#1d4ed8;color:#fff}.ot-sup{background:#b45309;color:#fff}.ot-extra2x{background:#be123c;color:#fff}.ot-custom{background:#374151;color:#fff}.leave{background:#10b981;color:#07210a}
+.foot{position:absolute;left:14px;right:14px;bottom:14px;display:flex;justify-content:space-between;gap:8px}
+.small{font-size:12px;color:var(--muted)} .amt{font-size:15px;font-weight:800;color:#dbe4ff}
+.panelGrid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+.pillBar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pill{padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#070b15;font-size:12px;color:#d5dbef}
+.detailRow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.detailRow:last-child{border-bottom:none}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.listRow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;background:#070b15;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
+.notice{margin-top:12px;padding:12px 14px;border-radius:14px;background:#111827;border:1px solid rgba(255,255,255,.08);font-size:13px;color:#cfd4e3}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.modal.active{display:flex}
+.modalCard{width:min(980px,100%);background:rgba(8,11,21,.98);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.modalTitle{font-size:28px;font-weight:900;letter-spacing:-.03em}
+.modalSub{font-size:13px;color:#98a0b5;margin-top:4px}
+.actionGrid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:10px;margin-top:12px}
+.actionBtn{padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:#111827;color:#fff;font-weight:800;cursor:pointer;text-align:left}
+.actionSub{display:block;font-size:12px;color:#cfd4e3;margin-top:4px;font-weight:600}
+.settings{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px;margin-top:16px}
+.settings label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.settings input,.settings select{width:100%;border:1px solid var(--line);border-radius:16px;padding:14px;background:#070b15;color:var(--text);font-size:16px;outline:none;margin-top:8px}
+@media (max-width:1280px){.summary{grid-template-columns:1fr 1fr}.panelGrid,.settings{grid-template-columns:1fr}}
+@media (max-width:760px){.summary{grid-template-columns:1fr}.weekdays,.grid{gap:8px}.cell{min-height:120px;padding:10px}.foot{position:static;margin-top:10px}.actionGrid{grid-template-columns:1fr}.listRow{grid-template-columns:1fr}}
+</style>
+
+<meta name="theme-color" content="#050812">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PayCal">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div>
+      <div class="title">PayCal</div>
+      <div class="sub">Real calendar, working OT click actions, Excel-style bucket totals, ATO fortnight tax, plus airside OT buckets. Annual leave loading fixed: day annual = 12h base + 17.5%, night annual = 10h base + replacement shift loadings.</div>
+    </div>
+  </div>
+
+  <section class="summary">
+    <div class="card"><div class="k">Selected pay date</div><div class="v" id="payDateTop">-</div><div class="s" id="payRangeTop">-</div></div>
+    <div class="card"><div class="k">Gross</div><div class="v" id="grossTop">$0.00</div></div>
+    <div class="card"><div class="k">Tax</div><div class="v" id="taxTop">$0.00</div></div>
+    <div class="card"><div class="k">Net</div><div class="v" id="netTop">$0.00</div></div>
+    <div class="rightBtns">
+      <button class="btn" onclick="movePay(-14)">← Prev Pay</button>
+      <button class="btn" onclick="movePay(14)">Next Pay →</button>
+      <button class="btn" onclick="goCurrent()">Current</button>
+      <button class="btn" onclick="resetApp()">Reset</button>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="monthBar">
+      <div class="monthLeft">
+        <button class="btn" onclick="moveMonth(-1)">←</button>
+        <div class="monthTitle" id="monthTitle"></div>
+        <button class="btn" onclick="moveMonth(1)">→</button>
+      </div>
+      <div class="legend">
+        <div class="item"><span class="dot" style="background:var(--day)"></span>Day</div>
+        <div class="item"><span class="dot" style="background:var(--night)"></span>Night</div>
+        <div class="item"><span class="dot" style="background:var(--pay)"></span>Pay</div>
+        <div class="item"><span class="dot" style="background:var(--ph)"></span>PH</div>
+        <div class="item"><span class="dot" style="background:#7c3aed"></span>DEOH</div>
+        <div class="item"><span class="dot" style="background:#0f766e"></span>D O/T</div>
+        <div class="item"><span class="dot" style="background:#1d4ed8"></span>N O/T</div>
+      </div>
+    </div>
+    <div class="weekdays"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+    <div id="grid" class="grid"></div>
+    <div class="notice">Rules used: Mon–Fri day = 12 ORD. Mon–Thu night = 12 ORD + 12h @ 21.7%. Friday night = 12 ORD + 6h @ 21.7% + 6h @ 50%. Saturday day = 12 ORD + 12h @ 50%. Saturday night = 8 ORD + 4h OT2 + 6h @ 50% + 2h @ 100%. Sunday day = 12h OT2. Sunday night = 12 ORD + 6h @ 100% + 6h @ 21.7%. ALL OT, including presets and airside OT, uses: first 2h @ 1.5x, rest @ 2x, except exactly 2h = all @ 2x.</div>
+  </section>
+
+  <section class="panelGrid">
+    <div class="panel">
+      <h3 style="margin:0 0 6px">Quick entry from selected date</h3>
+      <p style="margin:0;color:var(--muted)">Click a date in the calendar, then use these buttons.</p>
+      <div class="pillBar" id="selectedBar"></div>
+      <div class="pillBar">
+        <button class="btn" onclick="applyPreset('DEOH',4,'standard')">DEOH · 4h</button>
+        <button class="btn" onclick="applyPreset('D O/T',12,'standard')">D O/T · 12h</button>
+        <button class="btn" onclick="applyPreset('N O/T',12,'standard')">N O/T · 12h</button>
+        <button class="btn" onclick="applyPreset('SUP',8,'standard')">SUP · 8h</button>
+        <button class="btn" onclick="applyPreset('extra2x',2,'standard')">+2h · 2x</button>
+        <button class="btn" onclick="randomOT()">Random OT</button>
+        <button class="btn" onclick="saveLeave('sick')">Sick Leave</button>
+        <button class="btn" onclick="saveLeave('annual')">Annual Leave</button>
+        <button class="btn" onclick="clearSelected()">Clear Date</button>
+      </div>
+      <div class="settings">
+        <div><label>Base rate<input id="baseRate" type="number" step="0.01"></label></div>
+        <div><label>Airside OT rate<input id="airsideRate" type="number" step="0.01"></label></div>
+        <div><label>Roster anchor<input id="anchorDate" type="date"></label></div>
+        <div><label>Pay period start<input id="periodStart" type="date"></label></div>
+      </div>
+      <div class="settings">
+        <div><label>Tax-free threshold<select id="taxThreshold"><option value="on">On</option><option value="off">Off</option></select></label></div>
+        <div><label>Super contribution<input id="superContribution" type="number" step="0.01"></label></div>
+        <div><label>Pay days after period end<input id="payDelay" type="number" step="1"></label></div>
+        <div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin:0 0 6px">Selected pay breakdown</h3>
+      <p style="margin:0;color:var(--muted)" id="periodLabel">-</p>
+      <div class="list" id="adjList"></div>
+      <div style="margin-top:16px">
+        <div class="detailRow"><div>Base gross</div><div id="baseGross">$0.00</div></div>
+        <div class="detailRow"><div>Add-on gross</div><div id="addGross">$0.00</div></div>
+        <div class="detailRow"><div>Gross pay</div><div id="grossPay">$0.00</div></div>
+        <div class="detailRow"><div>Tax</div><div id="taxPay">$0.00</div></div>
+        <div class="detailRow"><div>Net pay</div><div id="netPay">$0.00</div></div>
+      </div>
+      <div style="margin-top:16px">
+        <h3 style="font-size:20px;margin-bottom:10px">Excel-style totals</h3>
+        <div class="detailRow"><div>ORD hours</div><div id="pOrd">0</div></div>
+        <div class="detailRow"><div>OT 1.5 hours</div><div id="pOt15">0</div></div>
+        <div class="detailRow"><div>OT 2.0 hours</div><div id="pOt20">0</div></div>
+        <div class="detailRow"><div>Airside OT 1.5 hours</div><div id="pAot15">0</div></div>
+        <div class="detailRow"><div>Airside OT 2.0 hours</div><div id="pAot20">0</div></div>
+        <div class="detailRow"><div>21.7% hours</div><div id="p217">0</div></div>
+        <div class="detailRow"><div>50% hours</div><div id="p50">0</div></div>
+        <div class="detailRow"><div>100% hours</div><div id="p100">0</div></div>
+        <div class="detailRow"><div>PH 150% hours</div><div id="pPh">0</div></div>
+        <div class="detailRow"><div>Sick Leave hours</div><div id="pSick">0</div></div>
+        <div class="detailRow"><div>Annual Leave hours</div><div id="pAnnual">0</div></div>
+        <div class="detailRow"><div>Annual Leave 17.5% hours</div><div id="pAnn175">0</div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="actionModal" onclick="if(event.target.id==='actionModal') closeActionModal()">
+  <div class="modalCard">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div>
+        <div class="modalTitle" id="actionTitle">Selected date</div>
+        <div class="modalSub" id="actionSub">Choose an action</div>
+      </div>
+      <button class="btn" onclick="closeActionModal()">Close</button>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label class="pill" style="cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <input id="actionAirsideToggle" type="checkbox" style="width:18px;height:18px;accent-color:#fff;">
+        Airside OT
+      </label>
+      <div class="pill">Uses airside OT rate when on</div>
+    </div>
+    <div class="actionGrid">
+      <button class="actionBtn" onclick="actionPreset('DEOH',4,'standard')">DEOH<span class="actionSub">4h OT</span></button>
+      <button class="actionBtn" onclick="actionPreset('D O/T',12,'standard')">D O/T<span class="actionSub">12h OT</span></button>
+      <button class="actionBtn" onclick="actionPreset('N O/T',12,'standard')">N O/T<span class="actionSub">12h OT</span></button>
+      <button class="actionBtn" onclick="actionPreset('SUP',8,'standard')">SUP<span class="actionSub">8h OT</span></button>
+      <button class="actionBtn" onclick="actionPreset('extra2x',2,'standard')">+2H 2X<span class="actionSub">2h on worked shift</span></button>
+      <button class="actionBtn" onclick="actionRandom()">Random OT<span class="actionSub">Enter hours now</span></button>
+      <button class="actionBtn" onclick="actionLeave('sick')">Sick Leave<span class="actionSub">12h base only</span></button>
+      <button class="actionBtn" onclick="actionLeave('annual')">Annual Leave<span class="actionSub">12h base only</span></button>
+      <button class="actionBtn" onclick="clearSelected();closeActionModal()">Clear Date<span class="actionSub">Remove saved adjustment</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE='roster-pay-exact-working-v1';
+const NSW_PH = new Set(['2026-01-01','2026-01-26','2026-04-03','2026-04-04','2026-04-05','2026-04-06','2026-04-25','2026-04-27','2026-06-08','2026-10-05','2026-12-25','2026-12-26','2026-12-28']);
+const TAX_WITH = [[0,0,0],[361,0.16,57.8462],[500,0.26,107.8462],[625,0.18,57.8462],[721,0.189,64.3365],[865,0.3227,180.0385],[1282,0.32,176.5769],[2596,0.39,358.3077],[3653,0.47,650.6154]];
+const TAX_NO = [[0,0.16,0.16],[150,0.2117,7.755],[371,0.189,-0.6702],[515,0.3227,68.2367],[932,0.32,65.7202],[2246,0.39,222.951],[3303,0.47,487.2587]];
+const PATTERN = ['day','day','night','night','off','off','off','off'];
+
+function defState(){
+  return {
+    baseRate:28.38,
+    airsideRate:27.91,
+    anchorDate:'2026-01-30',
+    periodStart:'2026-01-26',
+    payDelay:4,
+    taxThreshold:true,
+    superContribution:0,
+    monthDate:'2026-02-01',
+    selectedDate:'2026-02-08',
+    payFocusDate:'2026-02-08',
+    overrides:{
+      '2026-01-28':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
+      '2026-01-29':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
+      '2026-02-04':{kind:'ot',preset:'N O/T',hours:12,mode:'standard'}
+    }
+  };
+}
+let state = load();
+let currentPreset='custom';
+function load(){ try{ const raw=localStorage.getItem(STORAGE); return raw?{...defState(),...JSON.parse(raw)}:defState(); }catch(e){ return defState(); } }
+function save(){ localStorage.setItem(STORAGE, JSON.stringify(state)); }
+const $=id=>document.getElementById(id);
+function n(v){ const x=Number(v); return Number.isFinite(x)?x:0; }
+function money(v){ return new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(Number(v||0)); }
+function dateObj(iso){ return new Date(iso+'T12:00:00'); }
+function iso(d){ return d.toISOString().slice(0,10); }
+function addDays(isoStr, days){ const d=dateObj(isoStr); d.setDate(d.getDate()+days); return iso(d); }
+function diffDays(a,b){ return Math.round((dateObj(a)-dateObj(b))/(24*60*60*1000)); }
+function monthStart(isoStr){ return isoStr.slice(0,7)+'-01'; }
+function weekday(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{weekday:'long'}); }
+function fmtLong(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function fmtShort(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
+function monthTitle(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{month:'long',year:'numeric'}); }
+function mondayIndex(isoStr){ return (dateObj(isoStr).getDay()+6)%7; }
+
+function workbookTax(fortnightGross, useThreshold){
+  const weekly = Math.trunc(fortnightGross/2);
+  const taxable = weekly + 0.99;
+  const table = useThreshold ? TAX_WITH : TAX_NO;
+  let chosen = table[0];
+  for(const row of table){ if(weekly >= row[0]) chosen = row; else break; }
+  return Math.round((taxable*chosen[1]) - chosen[2]) * 2;
+}
+function getAutoShift(date){
+  const idx = ((diffDays(date,state.anchorDate)%8)+8)%8;
+  return PATTERN[idx];
+}
+function getOverride(date){ return state.overrides[date] || null; }
+function getActual(date){
+  const ov = getOverride(date);
+  const baseShift = getAutoShift(date);
+  let shift = baseShift;
+  let status = 'normal';
+  let shiftHours = baseShift==='off'?0:12;
+  let ot = null;
+  if(ov){
+    if(ov.kind==='leave'){ status = ov.leaveType; shiftHours = ov.hours || 12; }
+    if(ov.kind==='shift'){ shift = ov.shift; shiftHours = ov.hours; }
+    if(ov.kind==='ot'){ ot = ov; }
+  }
+  return {shift, status, shiftHours, ot};
+}
+function otSplit(hours, mode, preset){
+  const h = n(hours);
+  if(h <= 2) return {ot15:0, ot20:h};
+  return {ot15:2, ot20:Math.max(0, h-2)};
+}
+function baseBuckets(date){
+  const actual = getActual(date);
+  const wd = weekday(date);
+  const nextDate = addDays(date, 1);
+  const phToday = NSW_PH.has(date);
+  const phNext = NSW_PH.has(nextDate);
+  const b = {ord:0,ot15:0,ot20:0,p217:0,p50:0,p100:0,ph:0,sick:0,annual:0,ann175:0};
+
+  if(actual.status==='sick'){
+    b.sick = 12;
+    return b;
+  }
+
+  if(actual.status==='annual'){
+    if(actual.shift==='day'){
+      b.annual = 12;
+      b.ann175 = 12;
+      return b;
+    }
+    if(actual.shift==='night'){
+      b.annual = 10;
+      if(wd==='Friday'){
+        b.p217 += 6;
+        b.p50 += 6;
+      } else if(wd==='Saturday'){
+        b.p50 += 6;
+        b.p100 += 2;
+      } else if(wd==='Sunday'){
+        b.p217 += 6;
+        b.p100 += 6;
+      } else {
+        b.p217 += 12;
+      }
+      return b;
+    }
+    b.annual = 12;
+    return b;
+  }
+
+  if(actual.shift==='off') return b;
+
+  if(actual.shift==='day' && phToday){
+    b.ph = 12;
+    return b;
+  }
+
+  if(actual.shift==='night' && (phToday || phNext)){
+    if(phToday && phNext){
+      b.ph = 12;
+      return b;
+    }
+    if(phToday && !phNext){
+      b.ph += 6;
+      b.ord += 6;
+      b.p217 += 6;
+      return b;
+    }
+    if(!phToday && phNext){
+      b.ord += 6;
+      b.p217 += 6;
+      b.ph += 6;
+      return b;
+    }
+  }
+
+  if(actual.shift==='day'){
+    if(wd==='Sunday'){ b.ot20 += 12; }
+    else if(wd==='Saturday'){ b.ord += 12; b.p50 += 12; }
+    else { b.ord += 12; }
+  } else if(actual.shift==='night'){
+    if(wd==='Friday'){ b.ord += 12; b.p217 += 6; b.p50 += 6; }
+    else if(wd==='Saturday'){ b.ord += 8; b.ot20 += 4; b.p50 += 6; b.p100 += 2; }
+    else if(wd==='Sunday'){ b.ord += 12; b.p100 += 6; b.p217 += 6; }
+    else { b.ord += 12; b.p217 += 12; }
+  }
+
+  return b;
+}
+function addonBuckets(date){
+  const actual = getActual(date);
+  if(actual.status==='annual' || actual.status==='sick'){
+    return {ot15:0,ot20:0,aot15:0,aot20:0,air:false,preset:'custom',hours:0,pay:0};
+  }
+  if(!actual.ot) return {ot15:0,ot20:0,aot15:0,aot20:0,air:false,preset:'custom',hours:0,pay:0};
+  const split = otSplit(actual.ot.hours, actual.ot.mode || 'standard', actual.ot.preset || 'custom');
+  const air = !!actual.ot.airside;
+  const rate = air ? n(state.airsideRate) : n(state.baseRate);
+  return {
+    ot15: air ? 0 : split.ot15,
+    ot20: air ? 0 : split.ot20,
+    aot15: air ? split.ot15 : 0,
+    aot20: air ? split.ot20 : 0,
+    air: air,
+    preset: actual.ot.preset || 'custom',
+    hours: n(actual.ot.hours),
+    pay: (split.ot15 * rate * 1.5) + (split.ot20 * rate * 2)
+  };
+}
+function dayTotal(date){
+  const base = baseBuckets(date);
+  const add = addonBuckets(date);
+  const rate = n(state.baseRate);
+  return (base.ord*rate)+(base.ot15*rate*1.5)+(base.ot20*rate*2)+(base.p217*rate*0.217)+(base.p50*rate*0.5)+(base.p100*rate)+(base.ph*rate*2.5)+(base.sick*rate)+(base.annual*rate)+(base.ann175*rate*0.175)+add.pay;
+}
+function getPeriod(date){
+  const idx = Math.floor(diffDays(date,state.periodStart)/14);
+  const start = addDays(state.periodStart, idx*14);
+  const end = addDays(start,13);
+  const payDate = addDays(end, n(state.payDelay));
+  return {start,end,payDate};
+}
+function summarize(period){
+  const t={ord:0,ot15:0,ot20:0,aot15:0,aot20:0,p217:0,p50:0,p100:0,ph:0,sick:0,annual:0,ann175:0};
+  let addonGross=0;
+  const rate = n(state.baseRate), airRate = n(state.airsideRate);
+  for(let i=0;i<14;i++){
+    const d = addDays(period.start,i);
+    const b = baseBuckets(d);
+    const a = addonBuckets(d);
+    t.ord += b.ord;
+    t.ot15 += b.ot15 + a.ot15;
+    t.ot20 += b.ot20 + a.ot20;
+    t.aot15 += a.aot15;
+    t.aot20 += a.aot20;
+    t.p217 += b.p217;
+    t.p50 += b.p50;
+    t.p100 += b.p100;
+    t.ph += b.ph;
+    t.sick += b.sick;
+    t.annual += b.annual;
+    t.ann175 += b.ann175;
+    addonGross += a.pay;
+  }
+  const gross =
+    (t.ord*rate) +
+    (t.ot15*rate*1.5) +
+    (t.ot20*rate*2) +
+    (t.aot15*airRate*1.5) +
+    (t.aot20*airRate*2) +
+    (t.p217*rate*0.217) +
+    (t.p50*rate*0.5) +
+    (t.p100*rate) +
+    (t.ph*rate*2.5) +
+    (t.sick*rate) +
+    (t.annual*rate) +
+    (t.ann175*rate*0.175);
+  const superAmount = n(state.superContribution);
+const taxableIncome = Math.max(0, gross - superAmount);
+const tax = workbookTax(taxableIncome, state.taxThreshold);
+const net = taxableIncome - tax;
+
+return {
+  totals:t,
+  baseGross:gross-addonGross,
+  addonGross,
+  gross,
+  tax,
+  net
+};
+}
+function otClass(preset){
+  if(preset==='DEOH') return 'ot-deoh';
+  if(preset==='D O/T') return 'ot-dayot';
+  if(preset==='N O/T') return 'ot-nightot';
+  if(preset==='SUP') return 'ot-sup';
+  if(preset==='extra2x') return 'ot-extra2x';
+  return 'ot-custom';
+}
+function selectDate(date){
+  state.selectedDate = date;
+  state.payFocusDate = date;
+  state.monthDate = monthStart(date);
+  render();
+  openActionModal();
+}
+function openActionModal(){
+  const a = getActual(state.selectedDate);
+  $('actionTitle').textContent = fmtLong(state.selectedDate);
+  $('actionSub').textContent = `${a.shift==='off'?'Off day':a.shiftHours+'h '+a.shift}${NSW_PH.has(state.selectedDate)?' · Public Holiday':''}`;
+  if($('actionAirsideToggle')) $('actionAirsideToggle').checked = !!(a.ot && a.ot.airside);
+  $('actionModal').classList.add('active');
+}
+function closeActionModal(){ $('actionModal').classList.remove('active'); }
+function applyPreset(preset,hours,mode,airside){
+  state.overrides[state.selectedDate] = {kind:'ot',preset:preset,hours:hours,mode:mode||'standard',airside:!!airside};
+  render();
+}
+function actionPreset(preset,hours,mode){
+  const air = $('actionAirsideToggle') ? $('actionAirsideToggle').checked : false;
+  applyPreset(preset,hours,mode,air);
+  closeActionModal();
+}
+function randomOT(){
+  const val = prompt('Enter OT hours for '+fmtLong(state.selectedDate));
+  if(val===null) return;
+  const hours = n(val);
+  const air = $('actionAirsideToggle') ? $('actionAirsideToggle').checked : false;
+  state.overrides[state.selectedDate] = {kind:'ot',preset:'custom',hours:hours,mode:'standard',airside:air};
+  render();
+}
+function actionRandom(){ randomOT(); closeActionModal(); }
+function saveLeave(kind){
+  state.overrides[state.selectedDate] = {kind:'leave',leaveType:kind,hours:12};
+  render();
+}
+function actionLeave(kind){ saveLeave(kind); closeActionModal(); }
+function clearSelected(){
+  delete state.overrides[state.selectedDate];
+  render();
+}
+function moveMonth(delta){
+  const d = dateObj(state.monthDate); d.setMonth(d.getMonth()+delta);
+  state.monthDate = iso(d).slice(0,7)+'-01'; render();
+}
+function movePay(days){
+  state.payFocusDate = addDays(state.payFocusDate, days);
+  state.monthDate = monthStart(state.payFocusDate);
+  render();
+}
+function goCurrent(){
+  state.monthDate = monthStart(state.selectedDate);
+  render();
+}
+function resetApp(){
+  state = defState();
+  save();
+  render();
+}
+function renderGrid(){
+  $('monthTitle').textContent = monthTitle(state.monthDate);
+  const g=$('grid'); g.innerHTML='';
+  const first = monthStart(state.monthDate);
+  const start = addDays(first,-mondayIndex(first));
+  for(let i=0;i<42;i++){
+    const d = addDays(start,i);
+    const a = getActual(d);
+    const cell = document.createElement('button');
+    cell.type='button';
+    cell.className='cell'+(d===state.selectedDate?' selected':'')+(d.slice(0,7)!==first.slice(0,7)?' other':'');
+    const tags=[];
+    if(a.shift==='day') tags.push('<span class="tag day">DAY</span>');
+    if(a.shift==='night') tags.push('<span class="tag night">NIGHT</span>');
+    if(getPeriod(d).payDate===d) tags.push('<span class="tag pay">PAY</span>');
+    if(NSW_PH.has(d)) tags.push('<span class="tag ph">PH</span>');
+    if(a.status==='sick') tags.push('<span class="tag leave">SICK</span>');
+    if(a.status==='annual') tags.push('<span class="tag leave">ANNUAL</span>');
+    if(a.ot) tags.push(`<span class="tag ${otClass(a.ot.preset)}">${a.ot.preset==='custom'?'OT':(a.ot.preset==='extra2x'?'+2H 2X':a.ot.preset)}</span>`);
+    cell.innerHTML = `<span class="dateNum">${Number(d.slice(8,10))}</span><div class="tags">${tags.join('')}</div><div class="foot"><div class="small">${a.shift==='off'?'Off':a.shiftHours+'h '+a.shift}</div><div class="amt">${dayTotal(d)>0?money(dayTotal(d)):''}</div></div>`;
+    cell.onclick = ()=>selectDate(d);
+    g.appendChild(cell);
+  }
+}
+function renderSummary(){
+  const p = getPeriod(state.payFocusDate);
+  const s = summarize(p);
+  $('payDateTop').textContent = fmtShort(p.payDate);
+  $('payRangeTop').textContent = `${fmtShort(p.start)} – ${fmtShort(p.end)}`;
+  $('grossTop').textContent = money(s.gross);
+  $('taxTop').textContent = money(s.tax);
+  $('netTop').textContent = money(s.net);
+
+  $('selectedBar').innerHTML = `<div class="pill">${fmtLong(state.selectedDate)}</div><div class="pill">${getActual(state.selectedDate).shift==='off'?'Off':getActual(state.selectedDate).shift}</div>${getActual(state.selectedDate).ot && getActual(state.selectedDate).ot.airside ? `<div class="pill">Airside OT</div>` : ''}`;
+  $('periodLabel').textContent = `${fmtLong(p.start)} – ${fmtLong(p.end)} | Pay ${fmtLong(p.payDate)}`;
+  $('baseGross').textContent = money(s.baseGross);
+  $('addGross').textContent = money(s.addonGross);
+  $('grossPay').textContent = money(s.gross);
+  $('taxPay').textContent = money(s.tax);
+  $('netPay').textContent = money(s.net);
+
+  $('pOrd').textContent = s.totals.ord;
+  $('pOt15').textContent = s.totals.ot15;
+  $('pOt20').textContent = s.totals.ot20;
+  $('pAot15').textContent = s.totals.aot15;
+  $('pAot20').textContent = s.totals.aot20;
+  $('p217').textContent = s.totals.p217;
+  $('p50').textContent = s.totals.p50;
+  $('p100').textContent = s.totals.p100;
+  $('pPh').textContent = s.totals.ph;
+  $('pSick').textContent = s.totals.sick;
+  $('pAnnual').textContent = s.totals.annual;
+  $('pAnn175').textContent = s.totals.ann175;
+
+  const list=$('adjList'); list.innerHTML='';
+  for(let i=0;i<14;i++){
+    const d = addDays(p.start,i), a=getActual(d), b=baseBuckets(d);
+    if(a.ot || a.status!=='normal' || b.ph){
+      const row=document.createElement('div');
+      row.className='listRow';
+      row.innerHTML = `<div><div style="font-weight:800">${fmtLong(d)}</div><div style="font-size:12px;color:#98a0b5">${a.status!=='normal'?a.status.toUpperCase():''}${a.status!=='normal'&&a.ot?' · ':''}${a.ot?(a.ot.preset==='custom'?a.ot.hours+'h OT':a.ot.preset):''}${a.ot && a.ot.airside ? ' · Airside' : ''}${(a.ot||a.status!=='normal')&&b.ph?' · ':''}${b.ph?'PH 12h':''}</div></div><button class="btn" onclick="selectDate('${d}')">Open</button><button class="btn" onclick="delete state.overrides['${d}']; render()">Clear</button>`;
+      list.appendChild(row);
+    }
+  }
+  if(!list.children.length){
+    const e=document.createElement('div');
+    e.className='notice';
+    e.textContent='No OT / leave / PH adjustments in this pay period.';
+    list.appendChild(e);
+  }
+}
+function bindSettings(){
+  $('baseRate').value = state.baseRate;
+  $('airsideRate').value = state.airsideRate;
+  $('anchorDate').value = state.anchorDate;
+  $('periodStart').value = state.periodStart;
+  $('payDelay').value = state.payDelay;
+  $('taxThreshold').value = state.taxThreshold?'on':'off';
+  $('superContribution').value = state.superContribution;
+}
+function pullSettings(){
+  state.baseRate = n($('baseRate').value);
+  state.airsideRate = n($('airsideRate').value);
+  state.anchorDate = $('anchorDate').value || state.anchorDate;
+  state.periodStart = $('periodStart').value || state.periodStart;
+  state.payDelay = parseInt($('payDelay').value||'4',10);
+  state.taxThreshold = $('taxThreshold').value==='on';
+  state.superContribution = n($('superContribution').value);
+}
+['baseRate','airsideRate','anchorDate','periodStart','payDelay','taxThreshold','superContribution'].forEach(id=>{
+  window.addEventListener('DOMContentLoaded',()=>$(id).addEventListener('input',()=>{ pullSettings(); render(); }));
+  window.addEventListener('DOMContentLoaded',()=>$(id).addEventListener('change',()=>{ pullSettings(); render(); }));
+});
+function render(){
+  save();
+  bindSettings();
+  renderGrid();
+  renderSummary();
+}
+window.addEventListener('DOMContentLoaded',render);
+</script>
+</body>
+</html>
