@@ -79,14 +79,28 @@ body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe 
 
 .payMark{
   position:absolute;
-  top:8px;
+  top:6px;
   right:10px;
   background:#ff2d2d;
   color:#fff;
   font-weight:900;
-  padding:4px 7px;
-  border-radius:6px;
-  font-size:14px;
+  font-size:18px; /* increased */
+  padding:5px 9px;
+  border-radius:8px;
+  line-height:1;
+  z-index:5;
+}
+
+.payNet{
+  position:absolute;
+  top:6px;
+  right:52px;
+  background:#0b1324;
+  color:#2fd27f;
+  font-weight:900;
+  padding:5px 8px;
+  border-radius:8px;
+  font-size:16px; /* increased */
   line-height:1;
   z-index:5;
 }
@@ -294,8 +308,8 @@ function defState(){
     baseRate:28.38,
     airsideRate:27.91,
     anchorDate:'2026-01-30',
-    periodStart:'2026-04-09',
-    payDelay:0,
+    periodStart:'2026-01-26',
+    payDelay:4,
     taxThreshold:true,
     superContribution:0,
     debtExpenses:1000,
@@ -305,9 +319,9 @@ function defState(){
     loanBalance:20285.81,
     loanApr:14.74,
     loanMin:819.75,
-    monthDate:'2026-04-01',
-    selectedDate:'2026-04-22',
-    payFocusDate:'2026-04-22',
+    monthDate:'2026-02-01',
+    selectedDate:'2026-02-08',
+    payFocusDate:'2026-02-08',
     overrides:{
       '2026-01-28':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
       '2026-01-29':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
@@ -568,6 +582,14 @@ function dayTotal(date){
   const rate = n(state.baseRate);
   return (base.ord*rate)+(base.ot15*rate*1.5)+(base.ot20*rate*2)+(base.p217*rate*0.217)+(base.p50*rate*0.5)+(base.p100*rate)+(base.ph*rate*2.5)+(base.sick*rate)+(base.annual*rate)+(base.ann175*rate*0.175)+add.pay;
 }
+
+function isPayMarkerDate(date){
+  const anchor = new Date('2026-04-22T12:00:00');
+  const current = new Date(date+'T12:00:00');
+  const diff = Math.round((current - anchor)/(1000*60*60*24));
+  return diff % 14 === 0;
+}
+
 function getPeriod(date){
   const idx = Math.floor(diffDays(date,state.periodStart)/14);
   const start = addDays(state.periodStart, idx*14);
@@ -635,7 +657,7 @@ function otClass(preset){
 }
 function selectDate(date){
   state.selectedDate = date;
-  state.payFocusDate = date;
+  state.payFocusDate = isPayMarkerDate(date) ? addDays(date, -n(state.payDelay)) : date;
   state.monthDate = monthStart(date);
   render();
   openActionModal();
@@ -727,11 +749,14 @@ function renderGrid(){
     if(a.status==='sick') tags.push('<span class="tag leave">SICK</span>');
     if(a.status==='annual') tags.push('<span class="tag leave">ANNUAL</span>');
     if(a.ot) tags.push(`<span class="tag ${otClass(a.ot.preset)}">${a.ot.preset==='custom'?'OT':(a.ot.preset==='extra2x'?'+2H 2X':a.ot.preset)}</span>`);
-    const anchor = new Date('2026-04-22T12:00:00');
-const current = new Date(d+'T12:00:00');
-const diff = Math.round((current - anchor)/(1000*60*60*24));
-const isPay = diff % 14 === 0;
-    cell.innerHTML = `${isPay ? '<div class="payMark">P</div>' : ''}<span class="dateNum">${Number(d.slice(8,10))}</span><div class="tags">${tags.join('')}</div><div class="foot"><div class="small">${a.shift==='off'?'Off':a.shiftHours+'h '+a.shift}</div><div class="amt">${dayTotal(d)>0?money(dayTotal(d)):''}</div></div>`;
+    const isPay = isPayMarkerDate(d);
+    let netBadge = '';
+    if (isPay) {
+      const periodForPay = getPeriod(addDays(d, -n(state.payDelay)));
+      const sum = summarize(periodForPay);
+      netBadge = `<div class="payNet">${money(sum.net)}</div>`;
+    }
+    cell.innerHTML = `${netBadge}${isPay ? '<div class="payMark">P</div>' : ''}<span class="dateNum">${Number(d.slice(8,10))}</span><div class="tags">${tags.join('')}</div><div class="foot"><div class="small">${a.shift==='off'?'Off':a.shiftHours+'h '+a.shift}</div><div class="amt">${dayTotal(d)>0?money(dayTotal(d)):''}</div></div>`;
     cell.onclick = ()=>selectDate(d);
     g.appendChild(cell);
   }
