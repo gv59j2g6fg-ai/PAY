@@ -66,6 +66,30 @@ body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe 
 .settings input,.settings select{width:100%;border:1px solid var(--line);border-radius:16px;padding:14px;background:#070b15;color:var(--text);font-size:16px;outline:none;margin-top:8px}
 @media (max-width:1280px){.summary{grid-template-columns:1fr 1fr}.panelGrid,.settings{grid-template-columns:1fr}}
 @media (max-width:760px){.summary{grid-template-columns:1fr}.weekdays,.grid{gap:8px}.cell{min-height:120px;padding:10px}.foot{position:static;margin-top:10px}.actionGrid{grid-template-columns:1fr}.listRow{grid-template-columns:1fr}}
+
+.debtGrid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+.debtSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.tableWrap{overflow:auto;margin-top:14px;border:1px solid rgba(255,255,255,.08);border-radius:18px}
+.debtTable{width:100%;border-collapse:collapse;background:#070b15}
+.debtTable th,.debtTable td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:13px;white-space:nowrap}
+.debtTable th{color:#cfd4e3;background:#0b1324}
+.goodText{color:#39e34b}.warnText{color:#fbbf24}
+@media (max-width:1280px){.debtGrid,.debtSummary{grid-template-columns:1fr}}
+
+
+.payMark{
+  position:absolute;
+  top:8px;
+  right:10px;
+  background:#ff2d2d;
+  color:#fff;
+  font-weight:900;
+  padding:4px 7px;
+  border-radius:6px;
+  font-size:14px;
+  line-height:1;
+  z-index:5;
+}
 </style>
 
 <meta name="theme-color" content="#050812">
@@ -132,9 +156,11 @@ body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe 
         <button class="btn" onclick="applyPreset('N O/T',12,'standard')">N O/T · 12h</button>
         <button class="btn" onclick="applyPreset('SUP',8,'standard')">SUP · 8h</button>
         <button class="btn" onclick="applyPreset('extra2x',2,'standard')">+2h · 2x</button>
+        <button class="btn" onclick="customOT15()">OT 1.5</button>
         <button class="btn" onclick="randomOT()">Random OT</button>
         <button class="btn" onclick="saveLeave('sick')">Sick Leave</button>
         <button class="btn" onclick="saveLeave('annual')">Annual Leave</button>
+        <button class="btn" onclick="setUnpaid()">Unpaid Off</button>
         <button class="btn" onclick="clearSelected()">Clear Date</button>
       </div>
       <div class="settings">
@@ -179,6 +205,49 @@ body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe 
       </div>
     </div>
   </section>
+
+
+  <section class="debtGrid">
+    <div class="panel">
+      <h3 style="margin:0 0 6px">Debt payoff planner</h3>
+      <p style="margin:0;color:var(--muted)">Uses each pay period's net pay, deducts your fixed expenses, then sends the rest to your card and personal loan. Extra shifts increase that pay period's debt payment automatically.</p>
+      <div class="settings">
+        <div><label>Expenses each fortnight<input id="debtExpenses" type="number" step="0.01"></label></div>
+        <div><label>Card balance<input id="cardBalance" type="number" step="0.01"></label></div>
+        <div><label>Card APR %<input id="cardApr" type="number" step="0.01"></label></div>
+        <div><label>Card minimum %<input id="cardMinPercent" type="number" step="0.01"></label></div>
+      </div>
+      <div class="settings">
+        <div><label>Loan balance<input id="loanBalance" type="number" step="0.01"></label></div>
+        <div><label>Loan APR %<input id="loanApr" type="number" step="0.01"></label></div>
+        <div><label>Loan minimum / fortnight<input id="loanMin" type="number" step="0.01"></label></div>
+        <div></div>
+      </div>
+      <div class="notice" id="debtNotice">Debt planner ready.</div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin:0 0 6px">Projected debt outcome</h3>
+      <p style="margin:0;color:var(--muted)">Start point is the selected pay period on this screen.</p>
+      <div class="debtSummary">
+        <div class="card"><div class="k">This pay net</div><div class="v" id="debtThisNet">$0.00</div><div class="s">Current selected pay period</div></div>
+        <div class="card"><div class="k">Less expenses</div><div class="v" id="debtExpenseOut">$0.00</div><div class="s">Fixed fortnight costs</div></div>
+        <div class="card"><div class="k">This pay to debt</div><div class="v" id="debtBudgetOut">$0.00</div><div class="s">Net available this fortnight</div></div>
+        <div class="card"><div class="k">Debt free date</div><div class="v" id="debtFreeDate">-</div><div class="s" id="debtFreeMeta">-</div></div>
+        <div class="card"><div class="k">Interest to finish</div><div class="v" id="debtInterest">$0.00</div><div class="s">Estimated forward interest</div></div>
+        <div class="card"><div class="k">Final total debt</div><div class="v" id="debtTotalNow">$0.00</div><div class="s">Card + loan now</div></div>
+      </div>
+      <div class="tableWrap">
+        <table class="debtTable">
+          <thead>
+            <tr><th>Pay date</th><th>Net pay</th><th>To debt</th><th>Card pay</th><th>Loan pay</th><th>Card left</th><th>Loan left</th></tr>
+          </thead>
+          <tbody id="debtRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </div>
 
 <div class="modal" id="actionModal" onclick="if(event.target.id==='actionModal') closeActionModal()">
@@ -203,9 +272,11 @@ body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe 
       <button class="actionBtn" onclick="actionPreset('N O/T',12,'standard')">N O/T<span class="actionSub">12h OT</span></button>
       <button class="actionBtn" onclick="actionPreset('SUP',8,'standard')">SUP<span class="actionSub">8h OT</span></button>
       <button class="actionBtn" onclick="actionPreset('extra2x',2,'standard')">+2H 2X<span class="actionSub">2h on worked shift</span></button>
+      <button class="actionBtn" onclick="actionCustomOT15()">OT 1.5<span class="actionSub">Enter hours at 1.5x</span></button>
       <button class="actionBtn" onclick="actionRandom()">Random OT<span class="actionSub">Enter hours now</span></button>
       <button class="actionBtn" onclick="actionLeave('sick')">Sick Leave<span class="actionSub">12h base only</span></button>
       <button class="actionBtn" onclick="actionLeave('annual')">Annual Leave<span class="actionSub">12h base only</span></button>
+      <button class="actionBtn" onclick="actionUnpaid()">Unpaid Off<span class="actionSub">Zero out this day</span></button>
       <button class="actionBtn" onclick="clearSelected();closeActionModal()">Clear Date<span class="actionSub">Remove saved adjustment</span></button>
     </div>
   </div>
@@ -223,13 +294,20 @@ function defState(){
     baseRate:28.38,
     airsideRate:27.91,
     anchorDate:'2026-01-30',
-    periodStart:'2026-01-26',
-    payDelay:4,
+    periodStart:'2026-04-09',
+    payDelay:0,
     taxThreshold:true,
     superContribution:0,
-    monthDate:'2026-02-01',
-    selectedDate:'2026-02-08',
-    payFocusDate:'2026-02-08',
+    debtExpenses:1000,
+    cardBalance:3699.29,
+    cardApr:20.99,
+    cardMinPercent:3,
+    loanBalance:20285.81,
+    loanApr:14.74,
+    loanMin:819.75,
+    monthDate:'2026-04-01',
+    selectedDate:'2026-04-22',
+    payFocusDate:'2026-04-22',
     overrides:{
       '2026-01-28':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
       '2026-01-29':{kind:'ot',preset:'D O/T',hours:12,mode:'standard'},
@@ -254,6 +332,101 @@ function fmtLong(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{wee
 function fmtShort(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
 function monthTitle(isoStr){ return dateObj(isoStr).toLocaleDateString('en-AU',{month:'long',year:'numeric'}); }
 function mondayIndex(isoStr){ return (dateObj(isoStr).getDay()+6)%7; }
+
+function round2(v){ return Math.round((Number(v||0)+Number.EPSILON)*100)/100; }
+function addDaysDate(d,days){ const x=new Date(d.getTime()); x.setDate(x.getDate()+days); return x; }
+function simulateDebt(startDate){
+  let cardBal = n(state.cardBalance);
+  let loanBal = n(state.loanBalance);
+  const cardRate = n(state.cardApr)/100/26;
+  const loanRate = n(state.loanApr)/100/26;
+  const rows=[];
+  let totalInterest=0;
+  const todayPay = getPeriod(startDate);
+  let cursor = todayPay.start;
+  for(let step=0; step<260; step++){
+    if(cardBal<=0 && loanBal<=0) break;
+    const period = getPeriod(cursor);
+    const sum = summarize(period);
+    const budget = Math.max(0, round2(sum.net - n(state.debtExpenses)));
+    const cardInterest = round2(cardBal * cardRate);
+    const loanInterest = round2(loanBal * loanRate);
+    cardBal = round2(cardBal + cardInterest);
+    loanBal = round2(loanBal + loanInterest);
+    totalInterest = round2(totalInterest + cardInterest + loanInterest);
+
+    let remain = budget;
+    let cardPay = 0;
+    let loanPay = 0;
+    const cardMin = Math.min(cardBal, Math.max(25, round2(cardBal * (n(state.cardMinPercent)/100))));
+    const loanMin = Math.min(loanBal, n(state.loanMin));
+
+    loanPay = Math.min(remain, loanMin);
+    remain = round2(remain - loanPay);
+    cardPay = Math.min(remain, cardMin);
+    remain = round2(remain - cardPay);
+
+    while(remain > 0.004 && (cardBal>cardPay || loanBal>loanPay)){
+      if(cardBal - cardPay > 0 && (n(state.cardApr) >= n(state.loanApr) || loanBal - loanPay <= 0)){
+        const extra = Math.min(remain, round2(cardBal - cardPay));
+        cardPay = round2(cardPay + extra);
+        remain = round2(remain - extra);
+      } else if(loanBal - loanPay > 0) {
+        const extra = Math.min(remain, round2(loanBal - loanPay));
+        loanPay = round2(loanPay + extra);
+        remain = round2(remain - extra);
+      } else break;
+    }
+
+    cardBal = round2(Math.max(0, cardBal - cardPay));
+    loanBal = round2(Math.max(0, loanBal - loanPay));
+    rows.push({payDate:period.payDate, net:sum.net, budget, cardPay, loanPay, cardBal, loanBal});
+    cursor = addDays(period.start, 14);
+  }
+  const done = cardBal<=0 && loanBal<=0;
+  return {rows, done, totalInterest, cardBal, loanBal};
+}
+function renderDebt(){
+  const start = state.payFocusDate;
+  const period = getPeriod(start);
+  const sum = summarize(period);
+  const currentBudget = Math.max(0, round2(sum.net - n(state.debtExpenses)));
+  $('debtThisNet').textContent = money(sum.net);
+  $('debtExpenseOut').textContent = money(state.debtExpenses);
+  $('debtBudgetOut').textContent = money(currentBudget);
+  $('debtTotalNow').textContent = money(n(state.cardBalance)+n(state.loanBalance));
+  const sim = simulateDebt(start);
+  const rowsEl = $('debtRows');
+  rowsEl.innerHTML='';
+  const limit = Math.min(18, sim.rows.length);
+  for(let i=0;i<limit;i++){
+    const r = sim.rows[i];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtShort(r.payDate)}</td><td>${money(r.net)}</td><td>${money(r.budget)}</td><td>${money(r.cardPay)}</td><td>${money(r.loanPay)}</td><td>${money(r.cardBal)}</td><td>${money(r.loanBal)}</td>`;
+    rowsEl.appendChild(tr);
+  }
+  if(sim.rows.length>18){
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td colspan="7" style="text-align:center;color:var(--muted)">…</td>';
+    rowsEl.appendChild(tr);
+    const r=sim.rows[sim.rows.length-1];
+    const tr2=document.createElement('tr');
+    tr2.innerHTML = `<td>${fmtShort(r.payDate)}</td><td>${money(r.net)}</td><td>${money(r.budget)}</td><td>${money(r.cardPay)}</td><td>${money(r.loanPay)}</td><td>${money(r.cardBal)}</td><td>${money(r.loanBal)}</td>`;
+    rowsEl.appendChild(tr2);
+  }
+  $('debtInterest').textContent = money(sim.totalInterest);
+  if(sim.done && sim.rows.length){
+    const finalRow = sim.rows[sim.rows.length-1];
+    $('debtFreeDate').textContent = fmtShort(finalRow.payDate);
+    $('debtFreeMeta').textContent = `${sim.rows.length} fortnights · ~${(sim.rows.length*14/30.44).toFixed(1)} months`;
+    $('debtNotice').innerHTML = `This planner starts from <b>${fmtLong(period.start)}</b>. Each future pay uses that period's actual calculated <b>net pay</b>, then deducts <b>${money(state.debtExpenses)}</b> expenses. Extra shifts and OT you add to future periods will automatically increase the debt payment for those periods.`;
+  } else {
+    $('debtFreeDate').textContent = 'Not clearing';
+    $('debtFreeMeta').textContent = 'Increase net pay or lower expenses';
+    $('debtNotice').innerHTML = `<span class="warnText">Your current setup does not fully clear the debt inside the planner horizon.</span> The likely issue is that the amount left after expenses is too low against interest and minimum payments.`;
+  }
+}
+
 
 function workbookTax(fortnightGross, useThreshold){
   const weekly = Math.trunc(fortnightGross/2);
@@ -284,6 +457,7 @@ function getActual(date){
 }
 function otSplit(hours, mode, preset){
   const h = n(hours);
+  if(mode === 'flat15') return {ot15:h, ot20:0};
   if(h <= 2) return {ot15:0, ot20:h};
   return {ot15:2, ot20:Math.max(0, h-2)};
 }
@@ -301,6 +475,9 @@ function baseBuckets(date){
   }
 
   if(actual.status==='annual'){
+    if(wd==='Sunday'){
+      return b;
+    }
     if(actual.shift==='day'){
       b.annual = 12;
       b.ann175 = 12;
@@ -453,6 +630,7 @@ function otClass(preset){
   if(preset==='N O/T') return 'ot-nightot';
   if(preset==='SUP') return 'ot-sup';
   if(preset==='extra2x') return 'ot-extra2x';
+  if(preset==='OT1.5') return 'ot-custom';
   return 'ot-custom';
 }
 function selectDate(date){
@@ -481,18 +659,34 @@ function actionPreset(preset,hours,mode){
 }
 function randomOT(){
   const val = prompt('Enter OT hours for '+fmtLong(state.selectedDate));
-  if(val===null) return;
+  if(val===null) return false;
   const hours = n(val);
   const air = $('actionAirsideToggle') ? $('actionAirsideToggle').checked : false;
   state.overrides[state.selectedDate] = {kind:'ot',preset:'custom',hours:hours,mode:'standard',airside:air};
   render();
+  return true;
 }
-function actionRandom(){ randomOT(); closeActionModal(); }
+function actionRandom(){ if(randomOT()) closeActionModal(); }
+function customOT15(){
+  const val = prompt('Enter 1.5x OT hours for '+fmtLong(state.selectedDate));
+  if(val===null) return false;
+  const hours = n(val);
+  const air = $('actionAirsideToggle') ? $('actionAirsideToggle').checked : false;
+  state.overrides[state.selectedDate] = {kind:'ot',preset:'OT1.5',hours:hours,mode:'flat15',airside:air};
+  render();
+  return true;
+}
+function actionCustomOT15(){ if(customOT15()) closeActionModal(); }
 function saveLeave(kind){
   state.overrides[state.selectedDate] = {kind:'leave',leaveType:kind,hours:12};
   render();
 }
 function actionLeave(kind){ saveLeave(kind); closeActionModal(); }
+function setUnpaid(){
+  state.overrides[state.selectedDate] = {kind:'shift',shift:'off',hours:0};
+  render();
+}
+function actionUnpaid(){ setUnpaid(); closeActionModal(); }
 function clearSelected(){
   delete state.overrides[state.selectedDate];
   render();
@@ -529,12 +723,15 @@ function renderGrid(){
     const tags=[];
     if(a.shift==='day') tags.push('<span class="tag day">DAY</span>');
     if(a.shift==='night') tags.push('<span class="tag night">NIGHT</span>');
-    if(getPeriod(d).payDate===d) tags.push('<span class="tag pay">PAY</span>');
     if(NSW_PH.has(d)) tags.push('<span class="tag ph">PH</span>');
     if(a.status==='sick') tags.push('<span class="tag leave">SICK</span>');
     if(a.status==='annual') tags.push('<span class="tag leave">ANNUAL</span>');
     if(a.ot) tags.push(`<span class="tag ${otClass(a.ot.preset)}">${a.ot.preset==='custom'?'OT':(a.ot.preset==='extra2x'?'+2H 2X':a.ot.preset)}</span>`);
-    cell.innerHTML = `<span class="dateNum">${Number(d.slice(8,10))}</span><div class="tags">${tags.join('')}</div><div class="foot"><div class="small">${a.shift==='off'?'Off':a.shiftHours+'h '+a.shift}</div><div class="amt">${dayTotal(d)>0?money(dayTotal(d)):''}</div></div>`;
+    const anchor = new Date('2026-04-22T12:00:00');
+const current = new Date(d+'T12:00:00');
+const diff = Math.round((current - anchor)/(1000*60*60*24));
+const isPay = diff % 14 === 0;
+    cell.innerHTML = `${isPay ? '<div class="payMark">P</div>' : ''}<span class="dateNum">${Number(d.slice(8,10))}</span><div class="tags">${tags.join('')}</div><div class="foot"><div class="small">${a.shift==='off'?'Off':a.shiftHours+'h '+a.shift}</div><div class="amt">${dayTotal(d)>0?money(dayTotal(d)):''}</div></div>`;
     cell.onclick = ()=>selectDate(d);
     g.appendChild(cell);
   }
@@ -594,6 +791,13 @@ function bindSettings(){
   $('payDelay').value = state.payDelay;
   $('taxThreshold').value = state.taxThreshold?'on':'off';
   $('superContribution').value = state.superContribution;
+  $('debtExpenses').value = state.debtExpenses;
+  $('cardBalance').value = state.cardBalance;
+  $('cardApr').value = state.cardApr;
+  $('cardMinPercent').value = state.cardMinPercent;
+  $('loanBalance').value = state.loanBalance;
+  $('loanApr').value = state.loanApr;
+  $('loanMin').value = state.loanMin;
 }
 function pullSettings(){
   state.baseRate = n($('baseRate').value);
@@ -603,8 +807,15 @@ function pullSettings(){
   state.payDelay = parseInt($('payDelay').value||'4',10);
   state.taxThreshold = $('taxThreshold').value==='on';
   state.superContribution = n($('superContribution').value);
+  state.debtExpenses = n($('debtExpenses').value);
+  state.cardBalance = n($('cardBalance').value);
+  state.cardApr = n($('cardApr').value);
+  state.cardMinPercent = n($('cardMinPercent').value);
+  state.loanBalance = n($('loanBalance').value);
+  state.loanApr = n($('loanApr').value);
+  state.loanMin = n($('loanMin').value);
 }
-['baseRate','airsideRate','anchorDate','periodStart','payDelay','taxThreshold','superContribution'].forEach(id=>{
+['baseRate','airsideRate','anchorDate','periodStart','payDelay','taxThreshold','superContribution','debtExpenses','cardBalance','cardApr','cardMinPercent','loanBalance','loanApr','loanMin'].forEach(id=>{
   window.addEventListener('DOMContentLoaded',()=>$(id).addEventListener('input',()=>{ pullSettings(); render(); }));
   window.addEventListener('DOMContentLoaded',()=>$(id).addEventListener('change',()=>{ pullSettings(); render(); }));
 });
@@ -613,6 +824,7 @@ function render(){
   bindSettings();
   renderGrid();
   renderSummary();
+  renderDebt();
 }
 window.addEventListener('DOMContentLoaded',render);
 </script>
